@@ -4,6 +4,10 @@ import { supabaseAdmin } from '@/lib/automations/admin-client'
 import { resumePendingExecution } from '@/lib/automations/engine'
 import type { AutomationContext } from '@/lib/automations/engine'
 
+// Never cache this endpoint — it's a stateful drain, and CDN-caching the GET
+// would serve a stale {processed:0} to header/query callers and skip the work.
+export const dynamic = 'force-dynamic'
+
 /**
  * Cron auth. Accepts the secret three ways so it works with Vercel Cron
  * (Authorization: Bearer <CRON_SECRET>), an external pinger (x-cron-secret

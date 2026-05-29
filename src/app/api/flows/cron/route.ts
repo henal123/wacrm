@@ -3,6 +3,9 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/flows/admin-client'
 import { resolveFallbackPolicy } from '@/lib/flows/fallback'
 
+// Never cache this endpoint — stateful sweep that must run live each call.
+export const dynamic = 'force-dynamic'
+
 /**
  * Sweep abandoned active flow runs.
  *
