@@ -125,6 +125,10 @@ export const RATE_LIMITS = {
    *  fidget with reactions and a single "swap" is actually two calls
    *  (remove + add) under the hood. */
   react: { limit: 120, windowMs: 60_000 },
+  /** Website lead ingestion (POST /api/leads/ingest). One shared
+   *  server-to-server caller; this is an abuse ceiling, not a per-user
+   *  throttle. Generous enough for form spikes + the reconciliation cron. */
+  leadIngest: { limit: 120, windowMs: 60_000 },
 } as const;
 
 /** Test-only helper. Clears the in-memory state so unit tests don't
