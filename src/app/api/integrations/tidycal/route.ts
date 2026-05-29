@@ -143,7 +143,71 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, matched: true, moved_to: movedTo, messaged })
+  // Schedule 24h + 2h reminders via the automations cron. Only when template
+  // sends are enabled and the slot is far enough out; marked transactional so
+  // the booked-call `seq:paused` doesn't suppress them.
+  let remindersScheduled = 0
+  if (process.env.LEAD_INGEST_SEND_TEMPLATE === 'true' && conversationId && callAt) {
+    const callMs = new Date(callAt).getTime()
+    if (!Number.isNaN(callMs)) {
+      const vars = { name: name ?? 'there', call_time: formatCallTime(callAt) }
+      remindersScheduled += await scheduleReminder(
+        db, userId, 'Call reminder 24h', contactId, conversationId, callMs - 24 * 3_600_000, vars,
+      )
+      remindersScheduled += await scheduleReminder(
+        db, userId, 'Call reminder 2h', contactId, conversationId, callMs - 2 * 3_600_000, vars,
+      )
+    }
+  }
+
+  return NextResponse.json({
+    ok: true,
+    matched: true,
+    moved_to: movedTo,
+    messaged,
+    reminders_scheduled: remindersScheduled,
+  })
+}
+
+/**
+ * Queue a reminder send for `runAtMs` by inserting an automation_pending_executions
+ * row pointing at the named reminder automation. Returns 1 if scheduled, 0 if
+ * skipped (past time, or the reminder automation isn't seeded yet).
+ */
+async function scheduleReminder(
+  db: Db,
+  userId: string,
+  automationName: string,
+  contactId: string,
+  conversationId: string,
+  runAtMs: number,
+  vars: Record<string, unknown>,
+): Promise<number> {
+  if (runAtMs <= Date.now()) return 0
+  const { data: auto } = await db
+    .from('automations')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('name', automationName)
+    .maybeSingle()
+  if (!auto) return 0
+  const { error } = await db.from('automation_pending_executions').insert({
+    automation_id: auto.id,
+    user_id: userId,
+    contact_id: contactId,
+    log_id: null,
+    parent_step_id: null,
+    branch: null,
+    next_step_position: 0,
+    context: { conversation_id: conversationId, vars, transactional: true },
+    run_at: new Date(runAtMs).toISOString(),
+    status: 'pending',
+  })
+  if (error) {
+    console.error('[tidycal] reminder schedule failed:', error.message)
+    return 0
+  }
+  return 1
 }
 
 function str(v: unknown): string | null {
