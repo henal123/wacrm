@@ -66,7 +66,10 @@ the goal is a reply, not a hard sell.
 > Applications for the Fashionpreneur Cohort are open 🎉 12 weeks of real mentors, a founder network, hands-on execution, and up to ₹10L funding eligibility — to take your brand from idea to market. Seats are limited. Tap below to apply.
 
 **`apex_webinar_invite`** · Marketing · `{{1}}`=topic, `{{2}}`=date, `{{3}}`=link
-> Free masterclass: "{{1}}" on {{2}}. Live with the Apex team — we'll break down how to actually build and scale a fashion label in India, with time for your questions. Save your spot: {{3}}
+> Free masterclass: "{{1}}" on {{2}}. Join the Apex Fashion Lab team live — how to build and scale a fashion label in India, plus a Q&A. Save your spot here: {{3}}
+> Reply if you have any questions, see you there!
+
+*(Meta rejects a variable as the last character — keep static text after `{{3}}`.)*
 
 ---
 
