@@ -514,7 +514,24 @@ async function resolveConversationId(args: ExecuteArgs): Promise<string> {
   return data.id as string
 }
 
+/**
+ * For a `tag_added` automation, fire only when the added tag matches the
+ * automation's configured `tag_id`. If no `tag_id` is configured, fire for
+ * any tag (back-compat). Exported for unit testing.
+ */
+export function tagTriggerMatches(
+  triggerConfig: unknown,
+  ctx: { tag_id?: string } | undefined,
+): boolean {
+  const tagId = (triggerConfig as { tag_id?: string } | null)?.tag_id
+  if (!tagId) return true
+  return ctx?.tag_id === tagId
+}
+
 function triggerMatches(automation: Automation, ctx: AutomationContext | undefined): boolean {
+  if (automation.trigger_type === 'tag_added') {
+    return tagTriggerMatches(automation.trigger_config, ctx)
+  }
   if (automation.trigger_type !== 'keyword_match') return true
   const cfg = automation.trigger_config as KeywordMatchTriggerConfig
   if (!cfg?.keywords || cfg.keywords.length === 0) return false

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { timingSafeEqual } from 'node:crypto'
 import { supabaseAdmin } from '@/lib/automations/admin-client'
 import { engineSendTemplate } from '@/lib/automations/meta-send'
+import { runAutomationsForTrigger } from '@/lib/automations/engine'
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit'
 import { buildIngestArgs, type IngestLeadPayload } from '@/lib/leads/ingest'
 
@@ -114,6 +115,40 @@ export async function POST(request: Request) {
         '[leads/ingest] template send failed (non-fatal):',
         e instanceof Error ? e.message : e,
       )
+    }
+  }
+
+  // Enroll brand-new leads into the matching nurture sequence(s). Sequences
+  // are `tag_added` automations keyed by the program/source tag; dispatching
+  // here (only when a new contact was created) starts them. Awaited so the
+  // first wait-step is persisted before this serverless function returns.
+  // Never fatal — a dispatch problem must not fail the ingest.
+  if (!result.deduped && result.contact_id && result.conversation_id) {
+    const tagNames = [
+      args.p_program ? `program:${args.p_program}` : null,
+      args.p_source ? `source:${args.p_source}` : null,
+    ].filter((n): n is string => Boolean(n))
+    if (tagNames.length) {
+      try {
+        const { data: tagRows } = await db
+          .from('tags')
+          .select('id')
+          .eq('user_id', userId)
+          .in('name', tagNames)
+        for (const t of (tagRows ?? []) as Array<{ id: string }>) {
+          await runAutomationsForTrigger({
+            userId,
+            triggerType: 'tag_added',
+            contactId: result.contact_id,
+            context: { tag_id: t.id, conversation_id: result.conversation_id },
+          })
+        }
+      } catch (e) {
+        console.error(
+          '[leads/ingest] sequence dispatch failed (non-fatal):',
+          e instanceof Error ? e.message : e,
+        )
+      }
     }
   }
 
