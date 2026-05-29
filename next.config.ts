@@ -107,7 +107,10 @@ const nextConfig: NextConfig = {
         headers: [{ key: "Cache-Control", value: "no-store" }],
       },
       {
-        source: "/:path*",
+        // Exclude /api/* — otherwise this s-maxage rule overrides the
+        // no-store above and Vercel edge-caches API GETs (e.g. the cron
+        // endpoints would serve a stale cached body and skip their work).
+        source: "/((?!api/).*)",
         headers: [
           {
             key: "Cache-Control",
