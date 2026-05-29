@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { MessageTemplate } from '@/types';
-import { templateStatusConfig } from '@/lib/template-status';
+import { resolveTemplateStatus } from '@/lib/template-status';
 
 const CATEGORIES = ['Marketing', 'Utility', 'Authentication'] as const;
 const HEADER_TYPES = ['text', 'image', 'video', 'document'] as const;
@@ -304,9 +304,9 @@ export function TemplateManager() {
                       {template.category}
                     </Badge>
                     <Badge
-                      className={`text-xs border ${templateStatusConfig[template.status || 'DRAFT'].classes}`}
+                      className={`text-xs border ${resolveTemplateStatus(template.status).classes}`}
                     >
-                      {templateStatusConfig[template.status || 'DRAFT'].label}
+                      {resolveTemplateStatus(template.status).label}
                     </Badge>
                     {template.language && (
                       <span className="text-xs text-slate-500 uppercase">{template.language}</span>

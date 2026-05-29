@@ -51,3 +51,24 @@ export const templateStatusConfig: Record<
     classes: 'bg-slate-700/30 text-slate-500 border-slate-700/40',
   },
 };
+
+/**
+ * Resolve a (possibly unknown / legacy / mis-cased) status value to a display
+ * config that is guaranteed to exist. The DB column is supposed to hold Meta's
+ * raw enum, but legacy rows (pre-migration 014 TitleCase like 'Approved'),
+ * Meta status aliases (PENDING_REVIEW), or a brand-new status Meta adds can all
+ * leak through — so callers must never index the map directly and assume a hit.
+ */
+export function resolveTemplateStatus(
+  status: string | null | undefined,
+): TemplateStatusDisplay {
+  if (!status) return templateStatusConfig.DRAFT;
+  const upper = status.toUpperCase();
+  if (upper === 'PENDING_REVIEW') return templateStatusConfig.PENDING;
+  return (
+    templateStatusConfig[upper as MessageTemplateStatus] ?? {
+      label: status,
+      classes: 'bg-slate-600/20 text-slate-400 border-slate-600/30',
+    }
+  );
+}
