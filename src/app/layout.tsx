@@ -69,6 +69,13 @@ export default function RootLayout({
     <html
       lang="en"
       data-theme={DEFAULT_THEME}
+      // The theme-boot <Script> below overwrites data-theme from
+      // localStorage before React hydrates, so the live attribute
+      // intentionally differs from the server-rendered DEFAULT_THEME.
+      // suppressHydrationWarning silences that expected mismatch — and
+      // only one level deep, so it covers <html>'s own attributes
+      // without masking mismatches anywhere in the tree below.
+      suppressHydrationWarning
       className={`${inter.variable} h-full antialiased`}
     >
       <head>
