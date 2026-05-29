@@ -1,7 +1,34 @@
+import { timingSafeEqual } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/automations/admin-client'
 import { resumePendingExecution } from '@/lib/automations/engine'
 import type { AutomationContext } from '@/lib/automations/engine'
+
+/**
+ * Cron auth. Accepts the secret three ways so it works with Vercel Cron
+ * (Authorization: Bearer <CRON_SECRET>), an external pinger (x-cron-secret
+ * header), or a query param (?secret=). Matches against AUTOMATION_CRON_SECRET
+ * or CRON_SECRET (constant-time).
+ */
+function cronAuthorized(request: Request): boolean {
+  const candidates = [
+    process.env.AUTOMATION_CRON_SECRET,
+    process.env.CRON_SECRET,
+  ].filter((s): s is string => Boolean(s))
+  if (candidates.length === 0) return false
+  const auth = request.headers.get('authorization') ?? ''
+  const bearer = auth.startsWith('Bearer ') ? auth.slice(7) : ''
+  const supplied =
+    request.headers.get('x-cron-secret') ||
+    bearer ||
+    new URL(request.url).searchParams.get('secret') ||
+    ''
+  const a = Buffer.from(supplied)
+  return candidates.some((c) => {
+    const b = Buffer.from(c)
+    return a.length === b.length && timingSafeEqual(a, b)
+  })
+}
 
 /**
  * Drain due `automation_pending_executions` rows. Meant to be hit
@@ -15,12 +42,10 @@ import type { AutomationContext } from '@/lib/automations/engine'
  * two-step UPDATE-by-id.
  */
 export async function GET(request: Request) {
-  const expected = process.env.AUTOMATION_CRON_SECRET
-  if (!expected) {
+  if (!process.env.AUTOMATION_CRON_SECRET && !process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'cron not configured' }, { status: 503 })
   }
-  const supplied = request.headers.get('x-cron-secret')
-  if (supplied !== expected) {
+  if (!cronAuthorized(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
