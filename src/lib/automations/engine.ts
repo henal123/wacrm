@@ -16,6 +16,7 @@ import type {
 } from '@/types'
 import { supabaseAdmin } from './admin-client'
 import { engineSendText, engineSendTemplate } from './meta-send'
+import { suppressionReason } from './suppression'
 
 // ------------------------------------------------------------
 // Public API
@@ -93,6 +94,23 @@ export async function resumePendingExecution(pending: {
   context: AutomationContext
 }): Promise<void> {
   const db = supabaseAdmin()
+
+  // Suppression guard: a tag applied AFTER this wait was scheduled — the
+  // contact opted out (STOP) or an interest reply / agent takeover paused
+  // the bot — cancels the rest of the sequence. Checked here (resume time)
+  // so it catches state changes that happened during the wait.
+  if (pending.contact_id) {
+    const tags = await fetchContactTagNames(db, pending.contact_id)
+    const reason = suppressionReason(tags)
+    if (reason) {
+      console.log(
+        `[automations] resume suppressed (${reason}) for contact ${pending.contact_id}`,
+      )
+      await markPending(pending.id, 'done')
+      return
+    }
+  }
+
   const { data: automation, error } = await db
     .from('automations')
     .select('*')
@@ -126,6 +144,28 @@ export async function resumePendingExecution(pending: {
 // ------------------------------------------------------------
 // Internal execution
 // ------------------------------------------------------------
+
+/**
+ * Fetch a contact's tag names for the resume suppression guard.
+ * Returns [] on error/none — a failed read must never block automations.
+ */
+async function fetchContactTagNames(
+  db: ReturnType<typeof supabaseAdmin>,
+  contactId: string,
+): Promise<string[]> {
+  const { data, error } = await db
+    .from('contact_tags')
+    .select('tags(name)')
+    .eq('contact_id', contactId)
+  if (error || !data) return []
+  return (data as Array<{ tags?: { name?: string } | { name?: string }[] | null }>)
+    .map((r) => {
+      const t = r.tags
+      if (!t) return null
+      return Array.isArray(t) ? t[0]?.name ?? null : t.name ?? null
+    })
+    .filter((n): n is string => Boolean(n))
+}
 
 async function executeAutomation(automation: Automation, input: DispatchInput) {
   const db = supabaseAdmin()
