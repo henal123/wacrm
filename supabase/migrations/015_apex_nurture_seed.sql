@@ -205,8 +205,16 @@ BEGIN
         jsonb_build_object(
           'prompt_text','Great! Tell us briefly about your brand or idea and where you''re at (just an idea, sampling, already selling, etc.)',
           'var_key','business_stage',
-          'next_node_key','handoff'
+          'next_node_key','book_call'
         ), 0, 360),
+      (v_flow_id, 'book_call', 'send_message',
+        jsonb_build_object(
+          'text','Perfect — thanks for sharing! 🙌' || chr(10) || chr(10) ||
+                 'The best next step is a quick call with our team to map out your brand and see if the cohort is a fit. Grab a time that works for you here:' || chr(10) ||
+                 'https://tidycal.com/apexfashionlab' || chr(10) || chr(10) ||
+                 'Our team will also reach out personally. Talk soon! ✨',
+          'next_node_key','handoff'
+        ), 0, 420),
       (v_flow_id, 'handoff', 'handoff',
         jsonb_build_object('note','New lead qualified via WhatsApp — program + business stage captured.'), 0, 480);
   END IF;
