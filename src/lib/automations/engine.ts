@@ -33,12 +33,6 @@ export interface AutomationContext {
   tag_id?: string
   /** Agent the conversation was assigned to, for conversation_assigned. */
   agent_id?: string
-  /**
-   * Transactional send (e.g. a booked-call reminder). Such sends bypass the
-   * `seq:paused` suppression so they still go out after a human takeover,
-   * but they are still suppressed for opted-out contacts.
-   */
-  transactional?: boolean
 }
 
 export interface DispatchInput {
@@ -107,9 +101,7 @@ export async function resumePendingExecution(pending: {
   // so it catches state changes that happened during the wait.
   if (pending.contact_id) {
     const tags = await fetchContactTagNames(db, pending.contact_id)
-    const reason = suppressionReason(tags, {
-      transactional: pending.context?.transactional === true,
-    })
+    const reason = suppressionReason(tags)
     if (reason) {
       console.log(
         `[automations] resume suppressed (${reason}) for contact ${pending.contact_id}`,
@@ -382,7 +374,7 @@ async function runStep(step: AutomationStep, args: ExecuteArgs): Promise<string>
               if (bNum) return 1
               return a.localeCompare(b)
             })
-            .map((k) => interpolate(String(cfg.variables![k]), args))
+            .map((k) => String(cfg.variables![k]))
         : []
       const { whatsapp_message_id } = await engineSendTemplate({
         userId: args.automation.user_id,

@@ -2,75 +2,76 @@
 
 Create these in **Meta WhatsApp Manager → Message Templates** (or via your BSP),
 language **English (`en`)**. After they're **Approved**, run
-`POST /api/whatsapp/templates/sync` in wacrm to pull them in, then flip
-`LEAD_INGEST_SEND_TEMPLATE=true` and activate the nurture sequences.
+`POST /api/whatsapp/templates/sync` in wacrm, set `LEAD_INGEST_SEND_TEMPLATE=true`,
+then activate the **Nurture —** automations.
 
-## Critical: where variables are allowed
+## Voice
+Write like a person, not a brochure. One idea per message, lead with the
+founder's problem (not "we're great"), be specific (₹, Myntra/Nykaa/Amazon,
+real outcomes), and end with ONE clear thing to do. Apex = "Asia's first
+fashion entrepreneurship lab" — proof beats claims, so the nurture leans on
+**founder-story videos** from the channel: <https://www.youtube.com/@ApexFashionLab>.
 
+> Swap the channel link for a **specific video URL** when you have one that fits
+> (e.g. a founder journey / honest review). Each distinct link is its own
+> template, so pin one evergreen video per template.
+
+## Where variables are allowed
 | Sent by | Variables? | Why |
 |---|---|---|
-| **Route** (ingest / TidyCal webhook) | ✅ real values | the code passes actual params (`name`, `time`, …) |
+| **Ingest route** (`apex_application_received`) | ✅ real values | code passes `name`, `program` |
 | **Broadcast** (`/api/whatsapp/broadcast`) | ✅ real values | per-recipient params supported |
-| **Nurture automation** (sequences) | ❌ **none** | the engine sends template params *literally* — `{{1}}` would arrive as the text "{{1}}". Keep these templates variable-free. |
-
-So the nurture-sequence templates below have **no** `{{n}}` placeholders by design.
+| **Nurture automations** (sequences) | ❌ **none** | the engine sends template params *literally* — `{{1}}` would arrive as the text "{{1}}". Keep these variable-free. |
 
 ---
 
-## A. Route-sent — Utility (have variables)
+## A. Ingest-route — Utility (variables)
 
-**`apex_application_received`** · Utility · vars `{{1}}`=name, `{{2}}`=program
-> Hi {{1}} 👋 We've received your {{2}} application at Apex Fashion Lab. Our team reviews every application personally — you'll hear from us within 48 hours. Reply here if you have any questions.
-
-**`apex_call_confirmed`** · Utility · `{{1}}`=name, `{{2}}`=date & time
-> You're booked, {{1}}! 📅 Your call with Apex Fashion Lab is on {{2}}. We'll call you on this number — reply "reschedule" if the time no longer works.
-
-**`apex_call_reminder_24h`** · Utility · `{{1}}`=name, `{{2}}`=time *(reminder wiring is a follow-up; submit now so it's approved)*
-> Hi {{1}}, a reminder that your Apex Fashion Lab call is tomorrow at {{2}}. Looking forward to learning about your brand. Reply "reschedule" if anything changed.
-
-**`apex_call_reminder_2h`** · Utility · `{{1}}`=name, `{{2}}`=time
-> Hi {{1}}, your Apex Fashion Lab call is in about 2 hours ({{2}}). Talk soon!
-
-**`apex_call_noshow`** · Utility · `{{1}}`=name
-> Hi {{1}}, we missed you on the call today — no worries, life happens. Reply here and we'll find a new time that works.
+**`apex_application_received`** · Utility · `{{1}}`=first name, `{{2}}`=program
+> Hi {{1}}, thanks for applying to the {{2}} at Apex Fashion Lab 🙌 We read every application ourselves, so you'll hear from a real person within 48 hours. While you wait — reply and tell us the *one* thing you're most stuck on with your brand right now. It helps us make our conversation count.
 
 ---
 
-## B. Nurture-sequence — Marketing (NO variables)
+## B. Nurture sequences — Marketing (NO variables)
 
-These are sent by the seeded sequences (`Nurture — Cohort / D2D / Top of funnel`).
+Sent by `Nurture — Cohort / D2D / Top of funnel`. These carry the channel link;
+the goal is a reply, not a hard sell.
 
 **`apex_value_story`** · Marketing
-> Quick story from Apex Fashion Lab: a founder we worked with went from a 50-piece test batch to selling on Myntra & Nykaa in 6 months. The unlock was the right supply chain + marketplace strategy — exactly what we build with our founders. Curious how it'd look for your brand? Reply and let's chat.
+> Most fashion brands in India stall at the same spot: a great idea, and a factory that won't touch a small first order. That gap kills more labels than bad designs ever do. We've helped founders cross it — from a tiny first batch to selling on Myntra & Nykaa. See how one of them did it 👇
+> https://www.youtube.com/@ApexFashionLab
 
 **`apex_case_study`** · Marketing
-> Thought this would be useful: how we helped a D2C label go from zero to a profitable, scalable operation across marketplaces. Want the same playbook for your brand? Just reply "yes".
+> Real story: a founder came to us with ₹0 in sales and a notes-app full of ideas. Six months on — an actual label, healthy margins, live across marketplaces. It wasn't luck; it was the right supply chain + a launch plan that made sense. Want us to map that path for *your* brand? Reply "map".
 
 **`apex_social_proof`** · Marketing
-> Apex Fashion Lab founders have launched brands now selling across Myntra, Nykaa, Amazon & Flipkart. Imagine your label on that list. Ready to start? Reply "apply" and we'll guide you.
+> Don't take our word for it — hear it straight from a founder who built their brand with us 👇
+> https://www.youtube.com/@ApexFashionLab
+> If you're serious about launching, reply "apply" and we'll show you the next step.
 
 **`apex_seats_filling`** · Marketing
-> Heads up — seats in the current Fashionpreneur wave are filling up. Selected founders get curriculum, mentors, network + ₹10L funding eligibility. Want us to hold your spot? Reply "yes".
+> Quick heads-up: the current Fashionpreneur wave is filling up. Founders who get in get mentors, a builder network, hands-on execution, and eligibility for up to ₹10L in funding. Want us to hold a seat while you decide? Reply "yes".
 
 **`apex_reengage`** · Marketing
-> It's been a while! Apex Fashion Lab has opened a new wave with more hands-on execution support for founders. Want to pick up where we left off? Reply "yes".
+> Still thinking about your fashion brand? No rush — but the gap between "someday" and "launched" is usually just having the right team around you. We've opened a new wave and we'd love to help you start. Reply "yes" and we'll pick up where you left off.
 
 ---
 
-## C. Broadcast-only — Marketing (variables OK, you set params per send)
+## C. Broadcast-only — Marketing (variables OK; you set params per send)
 
 **`apex_next_wave`** · Marketing
-> We're onboarding the next wave of fashion founders at Apex Fashion Lab. Still thinking about building your brand? Reply and we'll map your next step.
+> We're opening the next wave of founders at Apex Fashion Lab — Asia's first fashion entrepreneurship lab. If building your own label has been on your mind, this is the moment. Reply and we'll walk you through how it works.
 
-**`apex_cohort_open`** · Marketing · button: **URL** "Apply now" → your apply page
-> Applications for the Fashionpreneur Cohort at Apex Fashion Lab are now open. Limited seats per wave — tap below to apply.
+**`apex_cohort_open`** · Marketing · button: **URL** "Apply now" → apply page
+> Applications for the Fashionpreneur Cohort are open 🎉 12 weeks of real mentors, a founder network, hands-on execution, and up to ₹10L funding eligibility — to take your brand from idea to market. Seats are limited. Tap below to apply.
 
-**`apex_webinar_invite`** · Marketing · `{{1}}`=topic, `{{2}}`=date, `{{3}}`=join link
-> Free masterclass from Apex Fashion Lab: "{{1}}" on {{2}} — live with our team + Q&A. Save your spot: {{3}}
+**`apex_webinar_invite`** · Marketing · `{{1}}`=topic, `{{2}}`=date, `{{3}}`=link
+> Free masterclass: "{{1}}" on {{2}}. Live with the Apex team — we'll break down how to actually build and scale a fashion label in India, with time for your questions. Save your spot: {{3}}
 
 ---
 
 ## Submission tips
 - **Category matters**: Utility = transactional (tied to an action the user took); Marketing = promotional. Mis-categorizing risks rejection.
-- Keep emojis light and avoid anything that reads as spammy/financial-guarantee — India + Marketing templates get extra scrutiny.
-- After approval: `POST /api/whatsapp/templates/sync`, set `LEAD_INGEST_SEND_TEMPLATE=true`, then in wacrm activate **Nurture — Cohort / D2D / Top of funnel** (seeded inactive).
+- Keep it warm and human; avoid guarantees ("you'll make ₹X") and anything spammy — India + Marketing templates get extra scrutiny.
+- The nurture sequences only send `apex_value_story`, `apex_case_study`, `apex_social_proof`, `apex_seats_filling` — get those approved first; the rest power broadcasts/re-engagement.
+- After approval: `POST /api/whatsapp/templates/sync` → `LEAD_INGEST_SEND_TEMPLATE=true` → activate **Nurture — Cohort / D2D / Top of funnel** in wacrm.

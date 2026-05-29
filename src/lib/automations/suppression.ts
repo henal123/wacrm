@@ -15,14 +15,8 @@
  */
 export const SUPPRESSION_TAGS = ['optout:whatsapp', 'seq:paused'] as const
 
-export function suppressionReason(
-  tags: readonly string[],
-  opts?: { transactional?: boolean },
-): string | null {
-  // Opt-out always suppresses — never message someone who unsubscribed.
+export function suppressionReason(tags: readonly string[]): string | null {
   if (tags.includes('optout:whatsapp')) return 'opted_out'
-  // A paused sequence (interest reply / agent takeover) stops nurture, but
-  // NOT transactional sends like booked-call reminders.
-  if (!opts?.transactional && tags.includes('seq:paused')) return 'sequence_paused'
+  if (tags.includes('seq:paused')) return 'sequence_paused'
   return null
 }

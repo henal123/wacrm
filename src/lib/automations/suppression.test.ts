@@ -18,9 +18,4 @@ describe('suppressionReason', () => {
     expect(suppressionReason(['program:cohort', 'stage:new'])).toBeNull()
     expect(suppressionReason([])).toBeNull()
   })
-
-  it('lets transactional sends bypass seq:paused but not opt-out', () => {
-    expect(suppressionReason(['seq:paused'], { transactional: true })).toBeNull()
-    expect(suppressionReason(['optout:whatsapp'], { transactional: true })).toBe('opted_out')
-  })
 })
