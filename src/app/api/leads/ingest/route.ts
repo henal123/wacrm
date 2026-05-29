@@ -63,7 +63,18 @@ export async function POST(request: Request) {
   const { data, error } = await db.rpc('ingest_lead', args)
   if (error) {
     console.error('[leads/ingest] rpc failed:', error.message)
-    return NextResponse.json({ error: 'ingest_failed' }, { status: 500 })
+    // Surface the DB error to the (secret-authed) caller — this endpoint is
+    // server-to-server only, so returning the Postgres code/message is safe
+    // and makes setup/debugging tractable.
+    return NextResponse.json(
+      {
+        error: 'ingest_failed',
+        code: error.code ?? null,
+        detail: error.message ?? null,
+        hint: error.hint ?? null,
+      },
+      { status: 500 },
+    )
   }
 
   const result = (data ?? {}) as {
