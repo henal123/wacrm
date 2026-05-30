@@ -142,7 +142,9 @@ BEGIN
       jsonb_build_object('step_type','wait','step_config', jsonb_build_object('amount',3,'unit','days')),
       jsonb_build_object('step_type','send_template','step_config', jsonb_build_object('template_name','apex_social_proof','language','en')),
       jsonb_build_object('step_type','wait','step_config', jsonb_build_object('amount',4,'unit','days')),
-      jsonb_build_object('step_type','send_template','step_config', jsonb_build_object('template_name','apex_seats_filling','language','en'))
+      jsonb_build_object('step_type','send_template','step_config', jsonb_build_object('template_name','apex_seats_filling','language','en')),
+      jsonb_build_object('step_type','wait','step_config', jsonb_build_object('amount',3,'unit','days')),
+      jsonb_build_object('step_type','send_template','step_config', jsonb_build_object('template_name','apex_book_call','language','en'))
     )
   );
 
@@ -152,11 +154,13 @@ BEGIN
     FALSE,
     jsonb_build_array(
       jsonb_build_object('step_type','wait','step_config', jsonb_build_object('amount',2,'unit','days')),
-      jsonb_build_object('step_type','send_template','step_config', jsonb_build_object('template_name','apex_value_story','language','en')),
+      jsonb_build_object('step_type','send_template','step_config', jsonb_build_object('template_name','apex_value_story_d2d','language','en')),
       jsonb_build_object('step_type','wait','step_config', jsonb_build_object('amount',2,'unit','days')),
-      jsonb_build_object('step_type','send_template','step_config', jsonb_build_object('template_name','apex_case_study','language','en')),
+      jsonb_build_object('step_type','send_template','step_config', jsonb_build_object('template_name','apex_case_study_d2d','language','en')),
       jsonb_build_object('step_type','wait','step_config', jsonb_build_object('amount',3,'unit','days')),
-      jsonb_build_object('step_type','send_template','step_config', jsonb_build_object('template_name','apex_social_proof','language','en'))
+      jsonb_build_object('step_type','send_template','step_config', jsonb_build_object('template_name','apex_social_proof_d2d','language','en')),
+      jsonb_build_object('step_type','wait','step_config', jsonb_build_object('amount',3,'unit','days')),
+      jsonb_build_object('step_type','send_template','step_config', jsonb_build_object('template_name','apex_book_call','language','en'))
     )
   );
 
@@ -170,7 +174,30 @@ BEGIN
       jsonb_build_object('step_type','wait','step_config', jsonb_build_object('amount',3,'unit','days')),
       jsonb_build_object('step_type','send_template','step_config', jsonb_build_object('template_name','apex_case_study','language','en')),
       jsonb_build_object('step_type','wait','step_config', jsonb_build_object('amount',4,'unit','days')),
-      jsonb_build_object('step_type','send_template','step_config', jsonb_build_object('template_name','apex_social_proof','language','en'))
+      jsonb_build_object('step_type','send_template','step_config', jsonb_build_object('template_name','apex_social_proof','language','en')),
+      jsonb_build_object('step_type','wait','step_config', jsonb_build_object('amount',3,'unit','days')),
+      jsonb_build_object('step_type','send_template','step_config', jsonb_build_object('template_name','apex_book_call','language','en'))
+    )
+  );
+
+  -- Lifecycle sequences — fire when the team tags post-call / enrols a customer
+  -- (the tag-added dispatch from the contacts UI calls runAutomationsForTrigger).
+  PERFORM public._apex_make_automation(
+    p_user_id, 'Lifecycle — Post-call follow-up', 'tag_added',
+    (SELECT jsonb_build_object('tag_id', id) FROM tags WHERE user_id = p_user_id AND name = 'stage:call-done'),
+    FALSE,
+    jsonb_build_array(
+      jsonb_build_object('step_type','wait','step_config', jsonb_build_object('amount',1,'unit','days')),
+      jsonb_build_object('step_type','send_template','step_config', jsonb_build_object('template_name','apex_post_call','language','en'))
+    )
+  );
+
+  PERFORM public._apex_make_automation(
+    p_user_id, 'Lifecycle — Onboarding', 'tag_added',
+    (SELECT jsonb_build_object('tag_id', id) FROM tags WHERE user_id = p_user_id AND name = 'customer:cohort'),
+    FALSE,
+    jsonb_build_array(
+      jsonb_build_object('step_type','send_template','step_config', jsonb_build_object('template_name','apex_welcome_cohort','language','en'))
     )
   );
 

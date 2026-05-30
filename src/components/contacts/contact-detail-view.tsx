@@ -231,6 +231,12 @@ export function ContactDetailView({
       if (!error) {
         setContactTagIds((prev) => [...prev, tagId]);
         onUpdated();
+        // Fire tag_added automation trigger (lifecycle sequences). Non-blocking.
+        fetch('/api/automations/tag-added', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contact_id: contactId, tag_id: tagId }),
+        }).catch(() => {});
       }
     }
     setSavingTags(false);
