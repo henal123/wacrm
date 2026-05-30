@@ -843,19 +843,29 @@ async function findOrCreateContact(
   phone: string,
   name: string
 ): Promise<ContactOutcome | null> {
-  // Look up existing contacts for this user
-  const { data: contacts, error: contactsError } = await supabaseAdmin()
-    .from('contacts')
-    .select('*')
-    .eq('user_id', userId)
-
-  if (contactsError) {
-    console.error('Error fetching contacts:', contactsError)
-    return null
+  // Indexed last-10-digit lookup (migration 017). Falls back to a full scan
+  // + JS phonesMatch when the RPC isn't applied yet, so behaviour matches
+  // pre- and post-migration. The RPC path is O(log n); the fallback is O(n)
+  // and gets painful past ~10k contacts — applying 017 is recommended.
+  const senderLast10 = phone.slice(-10)
+  let existingContact: ContactRow | undefined
+  const { data: viaRpc, error: rpcErr } = await supabaseAdmin().rpc(
+    'find_contact_by_phone_last10',
+    { p_user_id: userId, p_last10: senderLast10 },
+  )
+  if (!rpcErr && Array.isArray(viaRpc) && viaRpc.length) {
+    existingContact = viaRpc[0] as ContactRow
+  } else if (rpcErr) {
+    const { data: contacts, error: contactsError } = await supabaseAdmin()
+      .from('contacts')
+      .select('*')
+      .eq('user_id', userId)
+    if (contactsError) {
+      console.error('Error fetching contacts:', contactsError)
+      return null
+    }
+    existingContact = contacts?.find((c: ContactRow) => phonesMatch(c.phone, phone))
   }
-
-  // Use phonesMatch for flexible matching
-  const existingContact = contacts?.find((c: ContactRow) => phonesMatch(c.phone, phone))
 
   if (existingContact) {
     // Update name if it changed

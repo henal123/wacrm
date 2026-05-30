@@ -107,6 +107,27 @@ export function ContactForm({
           .eq('id', contactId);
         if (error) throw error;
       } else {
+        // Phone dedupe — block creating a second contact for the same number.
+        // Uses an indexed last-10-digit match (migration 017) so e.g.
+        // "+91 7738666495" and "917738666495" are recognised as the same.
+        try {
+          const r = await fetch('/api/contacts/check-phone', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: phone.trim() }),
+          });
+          const j = await r.json().catch(() => ({}));
+          if (j?.existing) {
+            toast.error(
+              `This phone number already belongs to ${j.existing.name || 'an existing contact'}.`
+            );
+            setSaving(false);
+            return;
+          }
+        } catch {
+          // Dedupe check failed — fall through. Better to let the user create
+          // the contact than block them on a transient API error.
+        }
         const { data, error } = await supabase
           .from('contacts')
           .insert({
