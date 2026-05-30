@@ -5,12 +5,13 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { Conversation, ConversationStatus } from "@/types";
 import { Search, ChevronDown } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, differenceInDays } from "date-fns";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -36,12 +37,66 @@ const STATUS_COLORS: Record<ConversationStatus, string> = {
   closed: "bg-slate-500",
 };
 
-const FILTER_OPTIONS: { label: string; value: ConversationStatus | "all" }[] = [
-  { label: "All", value: "all" },
-  { label: "Open", value: "open" },
-  { label: "Pending", value: "pending" },
-  { label: "Closed", value: "closed" },
+/**
+ * Filter views. The first four are the original status filters; the bottom
+ * three are tag/recency-based "today's queue" views that the team actually
+ * needs to triage — surfaced from the same dropdown to avoid hiding them
+ * behind another menu.
+ */
+type FilterValue =
+  | "all"
+  | ConversationStatus
+  | "hot"
+  | "awaiting"
+  | "stale";
+
+const FILTER_OPTIONS: { label: string; value: FilterValue; group: "status" | "queue" }[] = [
+  { label: "All", value: "all", group: "status" },
+  { label: "Open", value: "open", group: "status" },
+  { label: "Pending", value: "pending", group: "status" },
+  { label: "Closed", value: "closed", group: "status" },
+  { label: "Hot leads", value: "hot", group: "queue" },
+  { label: "Awaiting follow-up", value: "awaiting", group: "queue" },
+  { label: "Stale", value: "stale", group: "queue" },
 ];
+
+/**
+ * Local widening of Conversation — the inbox fetch pulls the joined
+ * tag names so the queue filters below can match by tag without a second
+ * query. The type stays inside this file so the rest of the app keeps
+ * the original lean Conversation shape.
+ */
+type ConvTagged = Conversation & {
+  contact?: NonNullable<Conversation["contact"]> & {
+    contact_tags?: Array<{ tag?: { name: string } | null } | null> | null;
+  };
+};
+
+function tagNamesOf(c: ConvTagged): Set<string> {
+  const out = new Set<string>();
+  for (const ct of c.contact?.contact_tags ?? []) {
+    const n = ct?.tag?.name;
+    if (n) out.add(n);
+  }
+  return out;
+}
+
+// Tags that signal a contact has finished moving through the funnel
+// in one direction or another — used to suppress them from "today's
+// queue" views so the list doesn't fill up with already-handled people.
+const CLOSED_STATE_TAGS = new Set([
+  "optout:whatsapp",
+  "stage:won",
+  "stage:lost",
+  "customer:cohort",
+  "customer:d2d",
+  "customer:alumni",
+]);
+
+function hasClosedState(tags: Set<string>): boolean {
+  for (const t of tags) if (CLOSED_STATE_TAGS.has(t)) return true;
+  return false;
+}
 
 export function ConversationList({
   activeConversationId,
@@ -51,7 +106,7 @@ export function ConversationList({
   resyncToken = 0,
 }: ConversationListProps) {
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<ConversationStatus | "all">("all");
+  const [filter, setFilter] = useState<FilterValue>("all");
   const [loading, setLoading] = useState(true);
 
   // Keep the latest callback in a ref so the fetch effect below can
@@ -78,7 +133,13 @@ export function ConversationList({
     (async () => {
       const { data, error } = await supabase
         .from("conversations")
-        .select("*, contact:contacts(*)")
+        // Nest tags through contact so the new queue filters can match
+        // by tag name without a second query. PostgREST infers the
+        // join from the foreign keys; "tag:tags(name)" renames the
+        // inner relation so the JS shape is contact_tags[].tag.name.
+        .select(
+          "*, contact:contacts(*, contact_tags(tag:tags(name)))",
+        )
         .order("last_message_at", { ascending: false });
 
       if (cancelled) return;
@@ -108,10 +169,36 @@ export function ConversationList({
   }, [resyncToken]);
 
   const filtered = useMemo(() => {
-    let result = conversations;
+    let result = conversations as ConvTagged[];
+    const now = new Date();
 
-    if (filter !== "all") {
+    if (filter === "open" || filter === "pending" || filter === "closed") {
       result = result.filter((c) => c.status === filter);
+    } else if (filter === "hot") {
+      // Replied with interest and we haven't yet moved them past the
+      // funnel — these are the conversations a human needs to own *now*.
+      result = result.filter((c) => {
+        const tags = tagNamesOf(c);
+        return tags.has("eng:interested") && !hasClosedState(tags);
+      });
+    } else if (filter === "awaiting") {
+      // Post-call but no decision yet — needs a follow-up nudge from
+      // the team. Exits the queue automatically once tagged won/lost
+      // or moved to customer:*.
+      result = result.filter((c) => {
+        const tags = tagNamesOf(c);
+        return tags.has("stage:call-done") && !hasClosedState(tags);
+      });
+    } else if (filter === "stale") {
+      // Open conversations that have gone quiet for >7 days. Excludes
+      // anyone in a closed state so handled contacts don't reappear.
+      result = result.filter((c) => {
+        if (c.status !== "open") return false;
+        const tags = tagNamesOf(c);
+        if (hasClosedState(tags)) return false;
+        if (!c.last_message_at) return true;
+        return differenceInDays(now, new Date(c.last_message_at)) >= 7;
+      });
     }
 
     if (search.trim()) {
@@ -169,20 +256,28 @@ export function ConversationList({
             align="start"
             className="border-slate-700 bg-slate-800"
           >
-            {FILTER_OPTIONS.map((opt) => (
-              <DropdownMenuItem
-                key={opt.value}
-                onClick={() => setFilter(opt.value)}
-                className={cn(
-                  "text-sm",
-                  filter === opt.value
-                    ? "text-primary"
-                    : "text-slate-300"
-                )}
-              >
-                {opt.label}
-              </DropdownMenuItem>
-            ))}
+            {FILTER_OPTIONS.map((opt, i) => {
+              const prev = FILTER_OPTIONS[i - 1];
+              const showSeparator = prev && prev.group !== opt.group;
+              return (
+                <span key={opt.value}>
+                  {showSeparator && (
+                    <DropdownMenuSeparator className="bg-slate-700" />
+                  )}
+                  <DropdownMenuItem
+                    onClick={() => setFilter(opt.value)}
+                    className={cn(
+                      "text-sm",
+                      filter === opt.value
+                        ? "text-primary"
+                        : "text-slate-300"
+                    )}
+                  >
+                    {opt.label}
+                  </DropdownMenuItem>
+                </span>
+              );
+            })}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
