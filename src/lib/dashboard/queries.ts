@@ -10,11 +10,14 @@ import {
 import type {
   ActivityItem,
   ConversationsSeriesPoint,
+  FunnelAnalyticsData,
   MetricsBundle,
   PipelineDonutData,
   PipelineStageSlice,
   ResponseTimeBucket,
   ResponseTimeSummary,
+  TagBucket,
+  TemplateUsage,
 } from './types'
 
 // ------------------------------------------------------------
@@ -395,4 +398,123 @@ export async function loadActivity(db: DB, limit = 20): Promise<ActivityItem[]> 
   return items
     .sort((a, b) => (a.at > b.at ? -1 : a.at < b.at ? 1 : 0))
     .slice(0, limit)
+}
+
+// --- Funnel analytics --------------------------------------------------
+//
+// Three views in one panel:
+//   * Template usage — which templates we send the most and how often
+//     they're actually opened. Window = `windowDays` (default 30).
+//   * Sequence enrollment — distinct contacts currently sitting in each
+//     nurture sequence (`seq:*` tags). Current state, not windowed.
+//   * Stage funnel — distinct contacts at each lifecycle stage
+//     (`stage:*` tags), ordered like the funnel itself.
+//
+// All three aggregate client-side. Acceptable at current scale (hundreds
+// of contacts / few-thousand template sends); if either dataset grows
+// past ~10k rows we'd move the grouping into a SQL view or RPC.
+
+const SEQUENCE_LABELS: Record<string, string> = {
+  'seq:cohort': 'Cohort drip',
+  'seq:d2d': 'D2D drip',
+  'seq:tof': 'Top of funnel',
+  'seq:reengage': 'Re-engagement',
+  'seq:paused': 'Paused (human-owned)',
+}
+
+// Ordered the way we want to render the funnel — left-to-right.
+const STAGE_ORDER = [
+  'stage:new',
+  'stage:engaged',
+  'stage:call-booked',
+  'stage:call-done',
+  'stage:won',
+  'stage:lost',
+]
+
+const STAGE_LABELS: Record<string, string> = {
+  'stage:new': 'New',
+  'stage:engaged': 'Engaged',
+  'stage:call-booked': 'Call booked',
+  'stage:call-done': 'Call done',
+  'stage:won': 'Won',
+  'stage:lost': 'Lost',
+}
+
+export async function loadFunnelAnalytics(
+  db: DB,
+  windowDays = 30,
+): Promise<FunnelAnalyticsData> {
+  const since = daysAgoStart(windowDays - 1).toISOString()
+
+  // Single contact_tags fetch with the joined tag name; we filter into
+  // the two buckets (sequences vs stages) client-side instead of running
+  // two queries with redundant `tags!inner` joins.
+  const [templates, tagJoin] = await Promise.all([
+    db
+      .from('messages')
+      .select('template_name, status')
+      .not('template_name', 'is', null)
+      .gte('created_at', since)
+      .limit(10000),
+    db
+      .from('contact_tags')
+      .select('contact_id, tag:tags!inner(name)')
+      .limit(50000),
+  ])
+
+  // -- Templates ------------------------------------------------------
+  const tmplMap = new Map<string, TemplateUsage>()
+  for (const m of (templates.data ?? []) as { template_name: string | null; status: string | null }[]) {
+    if (!m.template_name) continue
+    const entry =
+      tmplMap.get(m.template_name) ??
+      { templateName: m.template_name, sent: 0, delivered: 0, read: 0 }
+    entry.sent += 1
+    if (m.status === 'delivered' || m.status === 'read') entry.delivered += 1
+    if (m.status === 'read') entry.read += 1
+    tmplMap.set(m.template_name, entry)
+  }
+  const templateUsage = [...tmplMap.values()]
+    .sort((a, b) => b.sent - a.sent)
+    .slice(0, 10)
+
+  // -- Sequences / stages --------------------------------------------
+  // PostgREST returns the nested tag as an object when the join is to-one,
+  // but the JS type isn't always inferred that way — narrow with `any`.
+  const seqContacts = new Map<string, Set<string>>()
+  const stageContacts = new Map<string, Set<string>>()
+  for (const row of (tagJoin.data ?? []) as Array<{
+    contact_id: string
+    tag: { name: string } | { name: string }[] | null
+  }>) {
+    // PostgREST sometimes serialises the joined record as an array of
+    // length 1 — handle both shapes so the count is stable.
+    const name = Array.isArray(row.tag) ? row.tag[0]?.name : row.tag?.name
+    if (!name) continue
+    const bucket = name.startsWith('seq:')
+      ? seqContacts
+      : name.startsWith('stage:')
+        ? stageContacts
+        : null
+    if (!bucket) continue
+    if (!bucket.has(name)) bucket.set(name, new Set())
+    bucket.get(name)!.add(row.contact_id)
+  }
+
+  const sequences: TagBucket[] = Object.entries(SEQUENCE_LABELS).map(
+    ([tag, label]) => ({
+      tag,
+      label,
+      count: seqContacts.get(tag)?.size ?? 0,
+    }),
+  )
+
+  const stageFunnel: TagBucket[] = STAGE_ORDER.map((tag) => ({
+    tag,
+    label: STAGE_LABELS[tag] ?? tag.replace('stage:', ''),
+    count: stageContacts.get(tag)?.size ?? 0,
+  }))
+
+  return { templateUsage, sequences, stageFunnel, windowDays }
 }

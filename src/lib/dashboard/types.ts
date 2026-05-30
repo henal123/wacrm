@@ -65,3 +65,35 @@ export interface ActivityItem {
   /** Optional deep-link for the whole row (not all items have a target). */
   href?: string
 }
+
+// --- Funnel analytics --------------------------------------------------
+
+export interface TemplateUsage {
+  templateName: string
+  /** Total outbound template messages in the window. */
+  sent: number
+  /** Reached the recipient's phone (status reached delivered or beyond). */
+  delivered: number
+  /** Recipient actually opened the message (status === 'read'). */
+  read: number
+}
+
+export interface TagBucket {
+  /** The raw tag name (e.g. "seq:cohort"). */
+  tag: string
+  /** Human-readable label derived from the suffix. */
+  label: string
+  /** Distinct contacts currently carrying the tag. */
+  count: number
+}
+
+export interface FunnelAnalyticsData {
+  /** Top templates by send volume in the window. */
+  templateUsage: TemplateUsage[]
+  /** Distinct contacts enrolled in each nurture sequence. */
+  sequences: TagBucket[]
+  /** Lifecycle funnel: new → engaged → call-booked → call-done → won/lost. */
+  stageFunnel: TagBucket[]
+  /** Days the template window covers (for the panel header). */
+  windowDays: number
+}

@@ -12,6 +12,7 @@ import {
 import {
   loadActivity,
   loadConversationsSeries,
+  loadFunnelAnalytics,
   loadMetrics,
   loadPipelineDonut,
   loadResponseTime,
@@ -19,6 +20,7 @@ import {
 import type {
   ActivityItem,
   ConversationsSeriesPoint,
+  FunnelAnalyticsData,
   MetricsBundle,
   PipelineDonutData,
   ResponseTimeSummary,
@@ -31,6 +33,7 @@ import { ConversationsChart } from '@/components/dashboard/conversations-chart'
 import { PipelineDonut } from '@/components/dashboard/pipeline-donut'
 import { ResponseTimeChart } from '@/components/dashboard/response-time-chart'
 import { ActivityFeed } from '@/components/dashboard/activity-feed'
+import { FunnelAnalytics } from '@/components/dashboard/funnel-analytics'
 
 type RangeDays = 7 | 30 | 90
 
@@ -57,6 +60,9 @@ export default function DashboardPage() {
 
   const [activity, setActivity] = useState<ActivityItem[] | null>(null)
   const [activityLoading, setActivityLoading] = useState(true)
+
+  const [funnel, setFunnel] = useState<FunnelAnalyticsData | null>(null)
+  const [funnelLoading, setFunnelLoading] = useState(true)
 
   const loadAll = useCallback(() => {
     const db = createClient()
@@ -91,6 +97,11 @@ export default function DashboardPage() {
       .then((a) => setActivity(a))
       .catch((err) => console.error('[dashboard] activity failed:', err))
       .finally(() => setActivityLoading(false))
+
+    void loadFunnelAnalytics(db, 30)
+      .then((f) => setFunnel(f))
+      .catch((err) => console.error('[dashboard] funnel failed:', err))
+      .finally(() => setFunnelLoading(false))
   }, [])
 
   useEffect(() => {
@@ -202,6 +213,9 @@ export default function DashboardPage() {
 
       {/* Response time */}
       <ResponseTimeChart data={responseTime} loading={responseTimeLoading} />
+
+      {/* Funnel analytics: lifecycle bars, sequence enrollment, template performance */}
+      <FunnelAnalytics data={funnel} loading={funnelLoading} />
 
       {/* Activity feed */}
       <ActivityFeed items={activity} loading={activityLoading} />
