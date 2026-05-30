@@ -122,6 +122,18 @@ SHEET_SCHEMAS = {
 
 
 def read_rows(xlsx_path: Path):
+    """
+    Yields (sheet_name, row_idx, name, phone_raw, email) for every data row.
+
+    Self-heals two real defects in the source spreadsheet:
+      * The Phone / Email columns are swapped starting at Sheet1 row 3320
+        (verified: emails landed in the phone column, phones landed in
+        the email column). When the declared phone cell doesn't look like
+        a phone but another cell on the row does, we use that cell as
+        the phone — and treat the original phone cell as the email.
+      * Excel auto-converts >15-digit numbers to scientific notation
+        (`9.19...e+16`); those are unrecoverable and stay rejected.
+    """
     wb = openpyxl.load_workbook(xlsx_path, read_only=True)
     for sheet_name in wb.sheetnames:
         schema = SHEET_SCHEMAS.get(sheet_name)
@@ -138,6 +150,21 @@ def read_rows(xlsx_path: Path):
             name = clean_name(row[name_i]) if name_i < len(row) else None
             phone_raw = row[phone_i] if phone_i < len(row) else None
             email = clean_email(row[email_i]) if email_i is not None and email_i < len(row) else None
+
+            # Column-swap recovery: if the declared phone cell doesn't
+            # canonicalize but a different cell on the row does, swap them.
+            if not canonicalize_phone(phone_raw):
+                for ci, candidate in enumerate(row):
+                    if ci in (name_i, phone_i):
+                        continue
+                    if canonicalize_phone(candidate):
+                        # The original phone cell is probably the email.
+                        recovered_email = clean_email(phone_raw)
+                        if recovered_email and not email:
+                            email = recovered_email
+                        phone_raw = candidate
+                        break
+
             yield sheet_name, row_idx, name, phone_raw, email
 
 
