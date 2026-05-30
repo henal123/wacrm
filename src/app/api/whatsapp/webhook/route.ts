@@ -197,6 +197,16 @@ async function processWebhook(body: { entry?: WhatsAppWebhookEntry[] }) {
     for (const change of entry.changes) {
       const value = change.value
 
+      // Template approval / rejection / pause events from Meta. Fires
+      // whenever a template's review status changes — no manual sync needed.
+      if (change.field === 'message_template_status_update') {
+        await handleTemplateStatusUpdate(
+          entry.id,
+          value as unknown as TemplateStatusEvent,
+        )
+        continue
+      }
+
       // Handle status updates
       if (value.statuses) {
         for (const status of value.statuses) {
@@ -303,6 +313,104 @@ function isValidStatusTransition(current: string, incoming: string): boolean {
   if (ii < 0) return false // unknown incoming status
   if (ci < 0) return true // unknown current — accept anything on the ladder
   return ii > ci
+}
+
+/**
+ * Shape of a `message_template_status_update` webhook payload.
+ * Documented at:
+ *   https://developers.facebook.com/docs/graph-api/webhooks/reference/whatsapp-business-account/#message-template-status-update
+ *
+ * Meta sends `event` as one of: APPROVED, REJECTED, PENDING, FLAGGED,
+ * PENDING_REVIEW, PAUSED, DISABLED. We mirror APPROVED/REJECTED/PAUSED/
+ * DISABLED verbatim onto message_templates.status and collapse the two
+ * pending variants to PENDING.
+ */
+interface TemplateStatusEvent {
+  event?: string
+  message_template_id?: string | number
+  message_template_name?: string
+  message_template_language?: string
+  reason?: string
+  disable_info?: { disable_date?: string }
+  // The MM (mass marketing) quality-rating event uses these fields instead:
+  previous_quality_score?: string
+  new_quality_score?: string
+}
+
+/**
+ * Handle a template review/quality event from Meta. Resolves the tenant by
+ * waba_id (entry.id) and updates the matching message_templates row(s) in
+ * place — no manual sync needed after submission. Safe to call repeatedly.
+ */
+async function handleTemplateStatusUpdate(
+  wabaId: string,
+  value: TemplateStatusEvent,
+) {
+  const rawEvent = (value.event || '').toUpperCase()
+  const name = value.message_template_name
+  if (!rawEvent || !name) return
+
+  // Map Meta's enum to message_templates.status (migration 014 stores
+  // uppercase Meta values verbatim). Collapse pending variants.
+  const statusMap: Record<string, string> = {
+    APPROVED: 'APPROVED',
+    REJECTED: 'REJECTED',
+    PENDING: 'PENDING',
+    PENDING_REVIEW: 'PENDING',
+    PAUSED: 'PAUSED',
+    FLAGGED: 'FLAGGED',
+    DISABLED: 'DISABLED',
+  }
+  const nextStatus = statusMap[rawEvent]
+  if (!nextStatus) return
+
+  // Resolve tenant(s) by WABA id. Most installs have a single row per
+  // WABA, but the schema doesn't enforce that — loop just in case.
+  const { data: configs, error: cfgErr } = await supabaseAdmin()
+    .from('whatsapp_config')
+    .select('user_id')
+    .eq('waba_id', wabaId)
+  if (cfgErr || !configs?.length) {
+    if (cfgErr) console.error('[webhook] template-status config lookup:', cfgErr)
+    return
+  }
+
+  const metaId = value.message_template_id != null ? String(value.message_template_id) : null
+  const lang = value.message_template_language || null
+
+  for (const cfg of configs) {
+    // Prefer meta_template_id (most reliable); fall back to (name,language).
+    // We do two best-effort updates — the second one is a no-op if the
+    // first already matched.
+    const baseUpdate = {
+      status: nextStatus,
+      updated_at: new Date().toISOString(),
+    }
+    if (metaId) {
+      const { error } = await supabaseAdmin()
+        .from('message_templates')
+        .update(baseUpdate)
+        .eq('user_id', cfg.user_id)
+        .eq('meta_template_id', metaId)
+      if (error) console.error('[webhook] template-status update by id:', error)
+    }
+    if (lang) {
+      const { error } = await supabaseAdmin()
+        .from('message_templates')
+        .update(baseUpdate)
+        .eq('user_id', cfg.user_id)
+        .eq('name', name)
+        .eq('language', lang)
+      if (error) console.error('[webhook] template-status update by name:', error)
+    } else {
+      const { error } = await supabaseAdmin()
+        .from('message_templates')
+        .update(baseUpdate)
+        .eq('user_id', cfg.user_id)
+        .eq('name', name)
+      if (error) console.error('[webhook] template-status update by name (no lang):', error)
+    }
+  }
 }
 
 async function handleStatusUpdate(status: {
