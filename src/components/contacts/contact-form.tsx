@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { dispatchTagAdded } from '@/lib/automations/dispatch-tag-added';
 import { toast } from 'sonner';
 import type { Contact, Tag, ContactTag } from '@/types';
 import {
@@ -159,6 +160,17 @@ export function ContactForm({
             .from('contact_tags')
             .insert(tagRows);
           if (tagError) throw tagError;
+        }
+
+        // Enroll tag_added automations for tags that are genuinely new to
+        // this contact. On create everything is new; on edit we diff against
+        // the tags the form opened with so re-saving unchanged tags (which
+        // get deleted + re-inserted above) doesn't re-fire sequences.
+        const previousTagIds = new Set(contactTags.map((ct) => ct.tag_id));
+        for (const tagId of selectedTagIds) {
+          if (!previousTagIds.has(tagId)) {
+            dispatchTagAdded(contactId, tagId);
+          }
         }
       }
 

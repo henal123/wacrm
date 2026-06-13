@@ -40,7 +40,8 @@ export async function POST(request: Request) {
 
     const body = await request.json()
     const {
-      conversation_id,
+      conversation_id: conversationIdInput,
+      contact_id,
       message_type,
       content_text,
       media_url,
@@ -50,9 +51,16 @@ export async function POST(request: Request) {
       reply_to_message_id,
     } = body
 
-    if (!conversation_id || !message_type) {
+    if (!message_type) {
       return NextResponse.json(
-        { error: 'conversation_id and message_type are required' },
+        { error: 'message_type is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!conversationIdInput && !contact_id) {
+      return NextResponse.json(
+        { error: 'conversation_id or contact_id is required' },
         { status: 400 }
       )
     }
@@ -71,22 +79,85 @@ export async function POST(request: Request) {
       )
     }
 
-    // Fetch conversation and contact
-    const { data: conversation, error: convError } = await supabase
-      .from('conversations')
-      .select('*, contact:contacts(*)')
-      .eq('id', conversation_id)
-      .eq('user_id', user.id)
-      .single()
+    // Resolve the conversation + contact. Two entry paths:
+    //   1. conversation_id supplied (normal inbox reply) — load it.
+    //   2. only contact_id supplied (first outbound to a never-messaged
+    //      contact, e.g. the "Start chat" action) — find-or-create the
+    //      conversation server-side so the agent can message before the
+    //      contact has ever replied. Conversations were previously only
+    //      created by the inbound webhook, so this path used to 404.
+    let conversation_id: string
+    let contact: { id: string; phone: string } | null = null
 
-    if (convError || !conversation) {
-      return NextResponse.json(
-        { error: 'Conversation not found' },
-        { status: 404 }
-      )
+    if (conversationIdInput) {
+      const { data: conversation, error: convError } = await supabase
+        .from('conversations')
+        .select('*, contact:contacts(*)')
+        .eq('id', conversationIdInput)
+        .eq('user_id', user.id)
+        .single()
+
+      if (convError || !conversation) {
+        return NextResponse.json(
+          { error: 'Conversation not found' },
+          { status: 404 }
+        )
+      }
+      conversation_id = conversation.id
+      contact = conversation.contact
+    } else {
+      // contact_id path — verify ownership, then find-or-create the
+      // conversation. Uses the service-role client to insert the
+      // conversation row (mirrors the webhook's findOrCreateConversation:
+      // same table/columns; sets last_message_at on create).
+      const { data: contactRow, error: contactError } = await supabase
+        .from('contacts')
+        .select('*')
+        .eq('id', contact_id)
+        .eq('user_id', user.id)
+        .single()
+
+      if (contactError || !contactRow) {
+        return NextResponse.json(
+          { error: 'Contact not found' },
+          { status: 404 }
+        )
+      }
+      contact = contactRow
+
+      const admin = supabaseAdmin()
+      const { data: existingConv } = await admin
+        .from('conversations')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('contact_id', contact_id)
+        .maybeSingle()
+
+      if (existingConv?.id) {
+        conversation_id = existingConv.id
+      } else {
+        const nowIso = new Date().toISOString()
+        const { data: newConv, error: createConvError } = await admin
+          .from('conversations')
+          .insert({
+            user_id: user.id,
+            contact_id: contact_id,
+            last_message_at: nowIso,
+          })
+          .select('id')
+          .single()
+
+        if (createConvError || !newConv) {
+          console.error('Error creating conversation:', createConvError)
+          return NextResponse.json(
+            { error: 'Failed to create conversation' },
+            { status: 500 }
+          )
+        }
+        conversation_id = newConv.id
+      }
     }
 
-    const contact = conversation.contact
     if (!contact?.phone) {
       return NextResponse.json(
         { error: 'Contact phone number not found' },
@@ -318,6 +389,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
+      conversation_id,
       message_id: messageRecord.id,
       whatsapp_message_id: waMessageId,
     })

@@ -140,7 +140,17 @@ export function ConversationList({
         .select(
           "*, contact:contacts(*, contact_tags(tag:tags(name)))",
         )
-        .order("last_message_at", { ascending: false });
+        // Order by recency: messaged conversations first (newest
+        // last_message_at), then never-messaged ones by created_at.
+        // `nullsFirst: false` keeps the thousands of last_message_at =
+        // NULL rows from sorting to the top; created_at is the tiebreaker
+        // so brand-new conversations (no message yet) still surface near
+        // the top instead of being buried. The limit caps the initial
+        // payload — there's no pagination here, so without it the full
+        // conversations table loads on every inbox open.
+        .order("last_message_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
+        .limit(100);
 
       if (cancelled) return;
 

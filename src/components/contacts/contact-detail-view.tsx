@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { dispatchTagAdded } from '@/lib/automations/dispatch-tag-added';
 import { toast } from 'sonner';
 import type { Contact, Tag, ContactTag, ContactNote, CustomField, ContactCustomValue, Deal } from '@/types';
 import {
@@ -31,6 +33,7 @@ import {
   Save,
   X,
   DollarSign,
+  MessageSquare,
 } from 'lucide-react';
 
 interface ContactDetailViewProps {
@@ -47,10 +50,14 @@ export function ContactDetailView({
   onUpdated,
 }: ContactDetailViewProps) {
   const supabase = createClient();
+  const router = useRouter();
 
   const [contact, setContact] = useState<Contact | null>(null);
   const [loading, setLoading] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState(false);
+  const [startingChat, setStartingChat] = useState(false);
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [firstMessage, setFirstMessage] = useState('');
 
   // Details tab
   const [editName, setEditName] = useState('');
@@ -170,6 +177,8 @@ export function ContactDetailView({
       fetchNotes();
       fetchCustomFields();
       fetchDeals();
+      setComposeOpen(false);
+      setFirstMessage('');
     }
   }, [open, contactId, fetchContact, fetchTags, fetchNotes, fetchCustomFields, fetchDeals]);
 
@@ -208,6 +217,39 @@ export function ContactDetailView({
     setSavingDetails(false);
   }
 
+  // Send the first outbound message to a (possibly never-messaged) contact.
+  // The send route find-or-creates the conversation server-side and returns
+  // its id, which we deep-link into the inbox so the agent lands in the thread.
+  async function startChat() {
+    if (!contactId || !firstMessage.trim()) return;
+    setStartingChat(true);
+
+    try {
+      const res = await fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contact_id: contactId,
+          message_type: 'text',
+          content_text: firstMessage.trim(),
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.conversation_id) {
+        toast.error(json?.error || 'Failed to start chat');
+        setStartingChat(false);
+        return;
+      }
+      setFirstMessage('');
+      setComposeOpen(false);
+      onOpenChange(false);
+      router.push(`/inbox?c=${json.conversation_id}`);
+    } catch {
+      toast.error('Failed to start chat');
+    }
+    setStartingChat(false);
+  }
+
   async function toggleTag(tagId: string) {
     if (!contactId) return;
     setSavingTags(true);
@@ -232,11 +274,7 @@ export function ContactDetailView({
         setContactTagIds((prev) => [...prev, tagId]);
         onUpdated();
         // Fire tag_added automation trigger (lifecycle sequences). Non-blocking.
-        fetch('/api/automations/tag-added', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contact_id: contactId, tag_id: tagId }),
-        }).catch(() => {});
+        dispatchTagAdded(contactId, tagId);
       }
     }
     setSavingTags(false);
@@ -384,6 +422,55 @@ export function ContactDetailView({
                   </div>
                 </div>
               </div>
+
+              {/* Start chat — opens (creating if needed) the conversation and
+                  drops the agent into the inbox thread. Lets us message a
+                  contact who has never replied. */}
+              {!composeOpen ? (
+                <Button
+                  onClick={() => setComposeOpen(true)}
+                  size="sm"
+                  className="mt-3 w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+                >
+                  <MessageSquare className="size-3.5" />
+                  Message
+                </Button>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  <Textarea
+                    value={firstMessage}
+                    onChange={(e) => setFirstMessage(e.target.value)}
+                    placeholder="Type a message..."
+                    className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 min-h-[60px] text-sm resize-none"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={startChat}
+                      disabled={!firstMessage.trim() || startingChat}
+                      size="sm"
+                      className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
+                    >
+                      {startingChat ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <MessageSquare className="size-3.5" />
+                      )}
+                      Send
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setComposeOpen(false);
+                        setFirstMessage('');
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                    >
+                      <X className="size-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </SheetHeader>
 
             {/* Tabs */}
