@@ -16,6 +16,7 @@ import type {
 } from '@/types'
 import { supabaseAdmin } from './admin-client'
 import { engineSendText, engineSendTemplate } from './meta-send'
+import { findOrCreateConversation } from '@/lib/whatsapp/conversation'
 import { suppressionReason } from './suppression'
 
 // ------------------------------------------------------------
@@ -495,23 +496,22 @@ async function runStep(step: AutomationStep, args: ExecuteArgs): Promise<string>
 /**
  * Pick the conversation a send-type step should use. Prefer the id the
  * webhook handed us (it's the one that just got the inbound message);
- * fall back to the contact's conversation for resumed/wait paths and
- * manual engine POSTs. Throws if none exists — send steps have
- * no meaningful target without a conversation.
+ * otherwise find-or-create the contact's conversation. The latter path
+ * covers automations enrolling a never-messaged lead (e.g. a tag_added
+ * trigger fired from the contacts UI, which carries no conversation):
+ * conversations were historically only created by the inbound webhook,
+ * so this used to throw and silently drop the send.
  */
 async function resolveConversationId(args: ExecuteArgs): Promise<string> {
   const fromCtx = args.context.conversation_id
   if (fromCtx) return fromCtx
   if (!args.contactId) throw new Error('cannot resolve conversation: no contact')
-  const { data, error } = await supabaseAdmin()
-    .from('conversations')
-    .select('id')
-    .eq('user_id', args.automation.user_id)
-    .eq('contact_id', args.contactId)
-    .maybeSingle()
-  if (error) throw new Error(`conversation lookup failed: ${error.message}`)
-  if (!data?.id) throw new Error('no conversation for contact')
-  return data.id as string
+  const { id } = await findOrCreateConversation(
+    supabaseAdmin(),
+    args.automation.user_id,
+    args.contactId,
+  )
+  return id
 }
 
 /**

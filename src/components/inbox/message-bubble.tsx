@@ -17,6 +17,7 @@ import {
 import { format } from "date-fns";
 import { ReplyQuote } from "./reply-quote";
 import { MessageReactions } from "./message-reactions";
+import { templateBubbleBody, isCustomerInteractiveTap } from "./message-display";
 
 interface MessageBubbleProps {
   message: Message;
@@ -190,20 +191,25 @@ function MessageContent({ message }: { message: Message }) {
         </a>
       );
 
-    case "template":
+    case "template": {
+      // Prefer the rendered body; fall back to the template name so
+      // historical rows (sent before automations stored a body) and any
+      // body-less template still show something instead of a bare chip.
+      const templateBody = templateBubbleBody(message);
       return (
         <div>
           <span className="mb-1 inline-flex items-center gap-1 rounded bg-primary/20 px-1.5 py-0.5 text-[10px] font-medium text-primary">
             <LayoutTemplate className="h-3 w-3" />
             Template
           </span>
-          {message.content_text && (
+          {templateBody && (
             <p className="mt-1 whitespace-pre-wrap break-words text-sm">
-              {message.content_text}
+              {templateBody}
             </p>
           )}
         </div>
       );
+    }
 
     case "location":
       return (
@@ -214,21 +220,31 @@ function MessageContent({ message }: { message: Message }) {
       );
 
     case "interactive": {
-      // Customer tapped a reply button or list row on a message the bot
-      // sent. We show the tapped option's title (already in content_text,
-      // set by parseMessageContent in the webhook) with a small affordance
-      // so agents reading the inbox can tell at a glance that this is a
-      // tap rather than the customer typing the same words.
+      // `interactive` covers two opposite directions:
+      //  - a customer TAP on a button/list row we sent (sender_type
+      //    'customer', webhook sets interactive_reply_id) — show the
+      //    tapped option's title with a "Button reply" affordance so
+      //    agents can tell it's a tap, not the customer typing.
+      //  - a bot PROMPT sent by the Flows engine (sender_type 'bot') —
+      //    this is an outbound message; render its body plainly with no
+      //    "reply" framing.
+      if (isCustomerInteractiveTap(message)) {
+        return (
+          <div className="flex flex-col gap-0.5">
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-slate-400">
+              <CornerDownLeft className="h-3 w-3" />
+              Button reply
+            </span>
+            <p className="whitespace-pre-wrap break-words text-sm">
+              {message.content_text || "[Interactive reply]"}
+            </p>
+          </div>
+        );
+      }
       return (
-        <div className="flex flex-col gap-0.5">
-          <span className="inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-slate-400">
-            <CornerDownLeft className="h-3 w-3" />
-            Button reply
-          </span>
-          <p className="whitespace-pre-wrap break-words text-sm">
-            {message.content_text || "[Interactive reply]"}
-          </p>
-        </div>
+        <p className="whitespace-pre-wrap break-words text-sm">
+          {message.content_text || "[Interactive message]"}
+        </p>
       );
     }
 

@@ -135,9 +135,18 @@ async function sendViaMeta(input: SendInput): Promise<{ whatsapp_message_id: str
   // Persist the sent message so it appears in the inbox with a real
   // Meta message id. sender_type='bot' distinguishes automation sends
   // from manual agent sends.
+  //
+  // For templates we resolve the actual body (interpolated with the
+  // positional params) so the bubble shows what was sent rather than an
+  // empty "Template" chip. Falls back to the template name if the body
+  // can't be resolved — never null, so the inbox always has something
+  // to render and to preview in the conversation list.
   const content_type = input.kind === 'template' ? 'template' : 'text'
-  const content_text = input.kind === 'text' ? input.text : null
   const template_name = input.kind === 'template' ? input.templateName : null
+  const content_text =
+    input.kind === 'text'
+      ? input.text
+      : await resolveTemplateBody(db, input.userId, input.templateName, input.language, input.params)
 
   const { error: msgErr } = await db.from('messages').insert({
     conversation_id: input.conversationId,
@@ -157,12 +166,55 @@ async function sendViaMeta(input: SendInput): Promise<{ whatsapp_message_id: str
   await db
     .from('conversations')
     .update({
-      last_message_text:
-        input.kind === 'template' ? `[template:${input.templateName}]` : input.text,
+      last_message_text: input.kind === 'template' ? content_text : input.text,
       last_message_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
     .eq('id', input.conversationId)
 
   return { whatsapp_message_id: waMessageId }
+}
+
+/**
+ * Best-effort render of a WhatsApp template's body for inbox display.
+ *
+ * Looks up the stored template by (user_id, name, language) — the same
+ * row the manual template picker sends — and interpolates the positional
+ * `{{1}}`, `{{2}}`, … placeholders with `params`. Returns the template
+ * name as a readable fallback when the body can't be resolved (template
+ * not stored locally, lookup error) so the persisted message is never
+ * empty. Never throws: a display-text failure must not fail a send that
+ * Meta already accepted.
+ */
+async function resolveTemplateBody(
+  db: ReturnType<typeof supabaseAdmin>,
+  userId: string,
+  templateName: string,
+  language: string | undefined,
+  params: string[] | undefined,
+): Promise<string> {
+  try {
+    let query = db
+      .from('message_templates')
+      .select('body_text')
+      .eq('user_id', userId)
+      .eq('name', templateName)
+    if (language) query = query.eq('language', language)
+    const { data, error } = await query
+      .order('updated_at', { ascending: false, nullsFirst: false })
+      .limit(1)
+    const body = (data as Array<{ body_text: string }> | null)?.[0]?.body_text
+    if (error || !body) return templateName
+    return interpolateTemplateParams(body, params ?? [])
+  } catch {
+    return templateName
+  }
+}
+
+/** Replace positional {{1}}, {{2}}, … placeholders with `params` (1-indexed). */
+export function interpolateTemplateParams(body: string, params: string[]): string {
+  return body.replace(/\{\{\s*(\d+)\s*\}\}/g, (_, raw) => {
+    const idx = Number(raw) - 1
+    return params[idx] ?? `{{${raw}}}`
+  })
 }
