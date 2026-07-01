@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Apex Fashion Lab — WhatsApp template headers</title>
+<style>
+  :root{
+    --bg:#f4efe8; --ink:#2b2420; --muted:#8a7f73; --line:#e3d9cc;
+    --gold:#c8a45a; --card:#fffdfa; --chat:#e9e2d7; --bubble:#ffffff;
+    --code:#2b2420; --codebg:#1f1a16;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:40px 24px 80px}
+  h1,h2,h3{font-family:Georgia,"Times New Roman",serif;font-weight:600;letter-spacing:-.01em}
+  h1{font-size:34px;margin:0 0 6px}
+  .sub{color:var(--muted);font-size:15px;max-width:760px}
+  .accent{color:var(--gold)}
+  .rule{height:1px;background:var(--line);margin:28px 0}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin:16px 0}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  code,.codebox{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px}
+  .codebox{position:relative;background:var(--codebg);color:#f3ece0;border-radius:10px;
+    padding:14px 46px 14px 14px;white-space:pre-wrap;word-break:break-word;line-height:1.5}
+  .copy{position:absolute;top:8px;right:8px;border:1px solid #4a4036;background:#332b23;color:#e9ddca;
+    border-radius:7px;font-size:11px;padding:5px 9px;cursor:pointer;font-family:inherit}
+  .copy:hover{background:#3f3329}
+  .copy.ok{background:var(--gold);color:#1f1a16;border-color:var(--gold)}
+  .specs{display:flex;flex-wrap:wrap;gap:10px 26px;font-size:13.5px;color:var(--muted);margin-top:6px}
+  .specs b{color:var(--ink);font-weight:600}
+
+  .grid{display:grid;grid-template-columns:1fr;gap:26px;margin-top:18px}
+  .tpl{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;
+    display:grid;grid-template-columns:minmax(0,420px) 1fr}
+  @media(max-width:820px){.tpl{grid-template-columns:1fr}}
+  .left{background:var(--chat);padding:22px;display:flex;flex-direction:column;gap:12px;
+    background-image:radial-gradient(rgba(0,0,0,.025) 1px,transparent 1px);background-size:18px 18px}
+  .num{font-family:Georgia,serif;font-size:13px;color:var(--gold);letter-spacing:.06em}
+  .bubble{background:var(--bubble);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.12);
+    overflow:hidden;max-width:380px}
+  .hdr{width:100%;aspect-ratio:1.91/1;object-fit:cover;display:block;background:#d8cdbd}
+  .hdr.ph{display:flex;align-items:center;justify-content:center;flex-direction:column;color:#8a7f73;
+    text-align:center;font-size:12px;gap:8px;
+    background:linear-gradient(135deg,#efe7da,#e4d8c6)}
+  .sw{display:flex;gap:0;width:120px;height:10px;border-radius:6px;overflow:hidden}
+  .sw i{flex:1}
+  .btxt{padding:10px 12px 12px}
+  .btxt .t{font-weight:700;font-size:14.5px;margin:0 0 6px}
+  .btxt p{margin:0 0 7px;font-size:13.5px;color:#1f1a16}
+  .btxt .foot{color:#9b9082;font-size:11.5px;margin-top:8px}
+  .btn{margin-top:7px;border-top:1px solid #eee;color:#1d8a8a;text-align:center;
+    font-size:13.5px;padding:9px;font-weight:600}
+  .btn .ic{opacity:.7;margin-right:5px}
+  .qr{color:#1d8a8a}
+  .tag{display:inline-block;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:#7a6f62;background:#efe7da;border:1px solid #e0d4c2;border-radius:999px;padding:3px 9px}
+  .tag.video{color:#8a4a2f;background:#f6e7df;border-color:#eccfbf}
+
+  .right{padding:22px 24px}
+  .right h3{margin:0 0 2px;font-size:20px}
+  .right .id{font-size:12.5px;color:var(--muted);margin-bottom:12px}
+  .concept{font-size:14px;color:#5f554a;margin:0 0 12px}
+  .srcline{display:flex;align-items:center;gap:12px;margin:14px 0 6px;font-size:12.5px;color:var(--muted)}
+  .srcline img{width:96px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+  .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);margin:14px 0 6px;font-weight:700}
+
+  .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;margin-top:16px}
+  .gcell{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .gcell img{width:100%;height:104px;object-fit:cover;display:block;background:#ded3c2}
+  .gcell .cap{font-size:11px;color:var(--muted);padding:6px 8px;word-break:break-all}
+  .steps{counter-reset:s;padding-left:0;list-style:none;margin:8px 0 0}
+  .steps li{position:relative;padding:6px 0 6px 34px;font-size:14px}
+  .steps li:before{counter-increment:s;content:counter(s);position:absolute;left:0;top:5px;
+    width:22px;height:22px;border-radius:50%;background:var(--gold);color:#1f1a16;font-size:12px;
+    font-weight:700;display:flex;align-items:center;justify-content:center}
+  a{color:#9a7a2b}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Apex Fashion Lab — WhatsApp template <span class="accent">headers</span></h1>
+  <p class="sub">One landscape header image per template, in a single cohesive editorial system, so
+  the sequence reads like a premium consulting firm. Each card below is the finished template
+  (image header + new copy + button) with a one-click image prompt and the source photo to start from.
+  Generate, tweak, send back the finals — then I host them, wire the send code, and submit all 15 to Meta.</p>
+
+  <div class="panel">
+    <div class="lbl" style="margin-top:0">Output spec — every image</div>
+    <div class="specs">
+      <span><b>Ratio</b> 1.91:1 landscape</span>
+      <span><b>Size</b> 1456 × 762 px</span>
+      <span><b>File</b> JPG/PNG, &lt; 5 MB</span>
+      <span><b>No</b> baked-in text, logo or watermark</span>
+      <span><b>Keep</b> a calm focal area + negative space</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="lbl" style="margin-top:0">Global style block — prepended to every prompt automatically below</div>
+    <div class="codebox" id="globalbox"></div>
+    <div class="lbl">Negative / avoid — appended automatically</div>
+    <div class="codebox" id="negbox"></div>
+    <p class="sub" style="margin-top:12px"><b>Tip:</b> generate <b>one</b> image you love, then use it as the
+    <span class="mono">--sref</span> / reference for the other 14 — that single move is what makes the set feel
+    like one brand instead of fifteen stock photos.</p>
+  </div>
+
+  <h2 style="margin-top:34px">The 15 templates</h2>
+  <div class="grid" id="grid"></div>
+
+  <div class="rule"></div>
+  <h2>Source library <span class="sub" style="font-weight:400">— already live at apexfashionlab.com/&lt;file&gt;</span></h2>
+  <div class="gallery" id="gallery"></div>
+
+  <div class="rule"></div>
+  <h2>After you generate</h2>
+  <ol class="steps">
+    <li>Drop the finals in the website <span class="mono">public/</span> folder (or send them to me — I'll host on Supabase). WhatsApp fetches header media by URL.</li>
+    <li>I extend the wacrm send code to attach a header per template (it only sends body params today) and map each <span class="mono">template_name → header URL</span>.</li>
+    <li>I upload the samples to Meta and submit all 15 edits — <b>names unchanged</b>, so your automations keep running.</li>
+    <li>We test-render on <b>+91 77386 66495</b> before going wide.</li>
+  </ol>
+</div>
+
+<script>
+const BASE = "https://www.apexfashionlab.com/";
+const GLOBAL = "Editorial fashion photograph, premium quiet-luxury / 'old money' mood, Indian fashion atelier sensibility. Natural soft window light, shallow depth of field, fine film grain, magazine quality. Warm desaturated palette: cream, oatmeal, camel, espresso brown, with a single restrained brushed-gold accent. Calm, unhurried, confident, generous negative space, off-centre composition. 1.91:1 landscape. No text, no logo, no watermark.";
+const NEG = "Avoid: text, words, letters, logo, watermark, on-screen UI, stock-photo cheesiness, garish or neon colours, harsh flash, clutter, plastic skin, deformed hands, extra fingers, lowres, jpeg artifacts, busy background. --ar 191:100 --style raw --v 6.1";
+
+const T = [
+ {n:"apex_value_story", title:"The gap that kills most labels", foot:"Idea to marketplace",
+  body:"Most fashion brands in India stall in the same place: a strong idea, and no factory willing to take a small first order.\n\nThat gap ends more labels than bad design ever will.\n\nWe help founders cross it — from a first short run to shelves on Myntra and Nykaa. Here's how one of them did it.",
+  btn:{l:"Watch the story",t:"url"}, htype:"image",
+  scene:"A single unfinished garment on a wooden hanger in a quiet, near-empty atelier; an empty cutting table and a stilled sewing machine softly blurred behind; one shaft of morning light across the floor. The feeling of a strong idea waiting for production. Negative space to the left.",
+  src:null},
+
+ {n:"apex_case_study", title:"From notes app to a real label", foot:"Idea to marketplace",
+  body:"A founder came to us with zero sales and a notes app full of ideas.\n\nSix months later: a live label, healthy margins, selling across marketplaces.\n\nIt wasn't luck — it was the right supply chain and a launch plan that made sense. We can map the same path for your brand.",
+  btn:{l:"Map my path",t:"qr"}, htype:"image",
+  scene:"A tidy boutique rail of finished premium menswear in muted earth tones and old-money tailoring, warm retail lighting, one garment pulled slightly forward into focus. Aspirational, calm, resolved.",
+  src:null},
+
+ {n:"apex_social_proof", title:"Don't take our word for it", foot:"Idea to marketplace",
+  body:"The clearest picture of what we do comes from the founders who've built with us.\n\nHear it in their words — then, if it sounds like your kind of build, we'll show you the next step.",
+  btn:{l:"Hear from a founder",t:"url"}, htype:"video",
+  scene:"A warm, candid three-quarter portrait of a young Indian fashion founder standing in their studio, relaxed and quietly confident, looking just off-camera; rolls of fabric softly blurred behind. Documentary, unposed.",
+  src:{f:"120A2005.JPG",note:"founder shot — or use a testimonial .mp4 as a VIDEO header"}},
+
+ {n:"apex_seats_filling", title:"The current wave is filling", foot:"Idea to marketplace",
+  body:"An honest heads-up: the current Fashionpreneur wave is close to full.\n\nFounders who get in get mentors, a builder network, hands-on execution, and eligibility for up to ₹10L in funding.\n\nWe can hold a seat while you decide.",
+  btn:{l:"Hold my seat",t:"qr"}, htype:"image",
+  scene:"A row of identical design-studio workstations and chairs under warm light, one seat empty and turned slightly outward while the others feel occupied. Quiet scarcity, no faces.",
+  src:null},
+
+ {n:"apex_reengage", title:"Still on your mind?", foot:"Idea to marketplace",
+  body:"No rush — but the distance between \"someday\" and \"launched\" is usually just the right team around you.\n\nWe've opened a new wave, and we'd be glad to help you pick up exactly where you left off.",
+  btn:{l:"Pick up where I left off",t:"qr"}, htype:"image",
+  scene:"An open fashion sketchbook with half-finished croquis and a pencil resting across it, on a wooden desk beside a window; a cooled cup of chai nearby. Unfinished work waiting patiently.",
+  src:null},
+
+ {n:"apex_next_wave", title:"The next wave is opening", foot:"Idea to marketplace",
+  body:"We're opening the next intake of founders at Apex Fashion Lab — Asia's first fashion entrepreneurship lab.\n\nIf building your own label has been at the back of your mind, this is the moment to move it to the front.",
+  btn:{l:"Walk me through it",t:"qr"}, htype:"image",
+  scene:"A bright modern fashion lab and workshop; a few founders mid-collaboration around a large table covered with fabric swatches and mood boards; composed energy, wide editorial framing, shallow focus.",
+  src:{f:"120A2105.JPG",note:"event energy — image-to-image reference"}},
+
+ {n:"apex_value_story_d2d", title:"Bring the vision. We build the brand.", foot:"Design to Delivery",
+  body:"Sourcing, sampling, manufacturing, marketplaces, marketing — a fashion label is a lot to carry alone.\n\nWith our Design-to-Delivery model, you bring the vision and we build it end to end. One founder handed us an idea; we handed back a market-ready brand.",
+  btn:{l:"Show me how it works",t:"qr"}, htype:"image",
+  scene:"A maker's hands working fine fabric over a tailor's table — measuring tape, tailor's chalk, shears and a half-constructed jacket. Tactile craftsmanship, close up, warm light.",
+  src:null},
+
+ {n:"apex_case_study_d2d", title:"They stayed the face. We ran the build.", foot:"Design to Delivery",
+  body:"A founder came to us with a clear vision and no time to run operations.\n\nWe took it Design-to-Delivery — sourcing, production, marketplace launch — while they stayed the face of the brand. Today it's live and profitable.",
+  btn:{l:"Build mine",t:"qr"}, htype:"image",
+  scene:"The production engine room — orderly rolls of premium fabric, an industrial sewing line softly blurred, a quality-control table with a folded garment under inspection light. Dignified behind-the-scenes.",
+  src:{f:"Blackout-Studio-5564-768x576.webp",note:"studio (low-res — reference only)"}},
+
+ {n:"apex_social_proof_d2d", title:"You stay the brand. We run the engine.", foot:"Design to Delivery",
+  body:"Our Design-to-Delivery founders focus on the brand while we run everything behind it — sourcing, QA, marketplaces, growth.\n\nThe labels we've built are live across Myntra, Nykaa and Amazon. Yours could be next.",
+  btn:{l:"Build mine, end to end",t:"qr"}, htype:"video",
+  scene:"A premium flat-lay on warm marble and wood — a smartphone displaying a clean, generic fashion e-commerce product page with no readable text, beside a neatly folded garment and a fabric swatch. Implies selling online without naming any marketplace.",
+  src:null},
+
+ {n:"apex_book_call", title:"Let's map your next step", foot:"Apex Fashion Lab",
+  body:"If you're ready to move your brand forward, let's talk.\n\nA short call is the fastest way to get clarity — where you are, what's next, and whether the cohort is the right fit. No pressure, just a straight answer.",
+  btn:{l:"Book a call",t:"url"}, htype:"image",
+  scene:"A calm corner of a design studio — two chairs angled toward each other by a window, a notebook and two coffees on a low table, soft morning light. A conversation about to begin.",
+  src:null},
+
+ {n:"apex_cohort_open", title:"Fashionpreneur Cohort — now open", foot:"Idea to marketplace",
+  body:"Applications for the next Fashionpreneur Cohort are open.\n\nTwelve weeks. Real mentors. A founder network. Hands-on execution — and eligibility for up to ₹10L in funding to take your brand from idea to market.\n\nSeats are limited. We keep the room small on purpose.",
+  btn:{l:"Apply now",t:"url"}, htype:"image",
+  scene:"A workshop table of engaged founders — hands, fabric swatches, laptops and notebooks — in a bright fashion lab, warm and aspirational, shallow depth of field. A cohort in motion.",
+  src:{f:"120A2105.JPG",note:"ideal — your real cohort/event, image-to-image"}},
+
+ {n:"apex_application_received", title:"We've got your application", foot:"Apex Fashion Lab",
+  body:"Hi {{1}}, thank you for applying to the {{2}}.\n\nWe read every application ourselves — so you'll hear back from a real person within 48 hours, not an auto-reply.\n\nWhile you wait: tell us the one thing you're most stuck on with your brand right now. It's the fastest way to make our first conversation count.",
+  btn:null, htype:"image",
+  scene:"A single open notebook and a fountain pen on a warm wooden desk, a folded note and a small sprig of greenery, soft daylight. Personal and considered.",
+  src:null},
+
+ {n:"apex_welcome_cohort", title:"Welcome to Apex Fashion Lab", foot:"Idea to marketplace",
+  body:"You're in.\n\nYou've joined a small group of founders who are done waiting for the right moment and ready to build a real label.\n\nYour onboarding details and first steps are on their way. Come ready to work — we'll match the effort.",
+  btn:null, htype:"image",
+  scene:"An inviting threshold into a bright, fresh atelier — an open studio door with light spilling in, a clean cutting table and garment rails ready. Beginnings and possibility, no people.",
+  src:null},
+
+ {n:"apex_post_call", title:"Good speaking with you", foot:"Apex Fashion Lab",
+  body:"Thanks for the conversation today.\n\nAs discussed, here's where we go next — our team will follow up shortly with the details. If anything comes to mind in the meantime, just reply here.",
+  btn:null, htype:"image",
+  scene:"Two coffee cups and a closed notebook on a sunlit studio table after a meeting; warm, human, resolved. The quiet aftermath of a good conversation.",
+  src:null},
+
+ {n:"apex_webinar_invite", title:"You're invited", foot:"Idea to marketplace",
+  body:"A free masterclass: \"{{1}}\"\n{{2}}\n\nJoin the Apex Fashion Lab team live for a practical session on building and scaling a fashion label in India — followed by an open Q&A.\n\nSave your spot: {{3}}",
+  btn:null, htype:"image",
+  scene:"A softly lit laptop on a clean desk showing an out-of-focus live-session setup with no readable interface, a notebook and chai beside it; an evening masterclass mood, calm and premium.",
+  src:{f:"120A2005.JPG",note:"or use the real speaker/stage shot"}},
+];
+
+const SOURCES = [
+ ["120A2005.JPG","Founder presenting · landscape"],
+ ["120A2105.JPG","Speaker on stage · landscape"],
+ ["120A2063.JPG","Event (verify)"],
+ ["120A2110.JPG","Event (verify)"],
+ ["Group-180.png","Speaker portrait"],
+ ["Group-182.png","Speaker portrait"],
+ ["rishabh.jpg","Mentor / founder"],
+ ["saket.jpg","Mentor / founder"],
+ ["Blackout-Studio-5564-768x576.webp","Studio (low-res)"],
+];
+
+function copyBtn(getText){
+  const b=document.createElement("button");
+  b.className="copy"; b.textContent="Copy";
+  b.onclick=async()=>{
+    const txt=getText();
+    try{ await navigator.clipboard.writeText(txt); }
+    catch(e){ const ta=document.createElement("textarea"); ta.value=txt; document.body.appendChild(ta);
+      ta.select(); document.execCommand("copy"); ta.remove(); }
+    b.textContent="Copied"; b.classList.add("ok");
+    setTimeout(()=>{b.textContent="Copy"; b.classList.remove("ok");},1200);
+  };
+  return b;
+}
+function codebox(text){
+  const d=document.createElement("div"); d.className="codebox"; d.textContent=text;
+  d.appendChild(copyBtn(()=>text)); return d;
+}
+
+document.getElementById("globalbox").textContent=GLOBAL;
+document.getElementById("globalbox").appendChild(copyBtn(()=>GLOBAL));
+document.getElementById("negbox").textContent=NEG;
+document.getElementById("negbox").appendChild(copyBtn(()=>NEG));
+
+const grid=document.getElementById("grid");
+T.forEach((t,i)=>{
+  const fullPrompt = GLOBAL+" "+t.scene+" "+NEG;
+  const card=document.createElement("div"); card.className="tpl";
+
+  // ---- left: whatsapp-style preview ----
+  const left=document.createElement("div"); left.className="left";
+  const num=document.createElement("div"); num.className="num"; num.textContent=String(i+1).padStart(2,"0");
+  const bubble=document.createElement("div"); bubble.className="bubble";
+
+  if(t.src){
+    const img=document.createElement("img"); img.className="hdr"; img.loading="lazy";
+    img.src=BASE+encodeURIComponent(t.src.f); img.alt=t.src.f;
+    bubble.appendChild(img);
+  }else{
+    const ph=document.createElement("div"); ph.className="hdr ph";
+    const sw=document.createElement("div"); sw.className="sw";
+    ["#efe7d8","#d9c39a","#b98c5a","#6f4e34","#2b2420"].forEach(c=>{const s=document.createElement("i");s.style.background=c;sw.appendChild(s);});
+    ph.innerHTML=""; ph.appendChild(sw);
+    const cap=document.createElement("div"); cap.innerHTML="generate header<br>1.91:1, no text"; ph.appendChild(cap);
+    bubble.appendChild(ph);
+  }
+  const bt=document.createElement("div"); bt.className="btxt";
+  const tt=document.createElement("div"); tt.className="t"; tt.textContent=t.title; bt.appendChild(tt);
+  t.body.split("\n\n").forEach(par=>{const p=document.createElement("p");p.textContent=par;bt.appendChild(p);});
+  const ft=document.createElement("div"); ft.className="foot"; ft.textContent="— "+t.foot; bt.appendChild(ft);
+  bubble.appendChild(bt);
+  if(t.btn){
+    const bn=document.createElement("div"); bn.className="btn";
+    bn.innerHTML=(t.btn.t==="url"?'<span class="ic">↗</span>':'<span class="ic qr">↩</span>')+t.btn.l;
+    bubble.appendChild(bn);
+  }
+  left.appendChild(num); left.appendChild(bubble);
+  if(!t.btn){const note=document.createElement("div");note.style.cssText="font-size:11px;color:#9b9082";note.textContent="(open reply — no button)";left.appendChild(note);}
+
+  // ---- right: prompt + source ----
+  const right=document.createElement("div"); right.className="right";
+  const h=document.createElement("h3"); h.textContent=t.title; right.appendChild(h);
+  const id=document.createElement("div"); id.className="id";
+  id.innerHTML='<span class="mono">'+t.n+'</span> &nbsp;·&nbsp; <span class="tag'+(t.htype==="video"?" video":"")+'">'+t.htype+' header</span>';
+  right.appendChild(id);
+  const c=document.createElement("div"); c.className="concept"; c.textContent=t.scene; right.appendChild(c);
+  const lbl=document.createElement("div"); lbl.className="lbl"; lbl.textContent="Ready-to-paste prompt"; right.appendChild(lbl);
+  right.appendChild(codebox(fullPrompt));
+  const sl=document.createElement("div"); sl.className="srcline";
+  if(t.src){
+    const im=document.createElement("img"); im.loading="lazy"; im.src=BASE+encodeURIComponent(t.src.f); im.alt=t.src.f;
+    sl.appendChild(im);
+    const sp=document.createElement("div"); sp.innerHTML="<b>Source:</b> <span class='mono'>"+t.src.f+"</span><br>"+t.src.note;
+    sl.appendChild(sp);
+  }else{
+    sl.innerHTML="<span><b>Source:</b> generate from scratch — no existing photo fits this scene.</span>";
+  }
+  right.appendChild(sl);
+
+  card.appendChild(left); card.appendChild(right);
+  grid.appendChild(card);
+});
+
+const gal=document.getElementById("gallery");
+SOURCES.forEach(([f,cap])=>{
+  const cell=document.createElement("div"); cell.className="gcell";
+  const im=document.createElement("img"); im.loading="lazy"; im.src=BASE+encodeURIComponent(f); im.alt=f;
+  const cp=document.createElement("div"); cp.className="cap"; cp.innerHTML="<b>"+f+"</b><br>"+cap;
+  cell.appendChild(im); cell.appendChild(cp); gal.appendChild(cell);
+});
+</script>
+</body>
+</html>
